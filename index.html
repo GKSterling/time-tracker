@@ -43,6 +43,12 @@
     font-weight: bold;
     margin: 12px 0;
   }
+ .saved-display {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #555;
+  margin: 8px 0;
+}
   .buttons {
     display: flex;
     justify-content: center;
@@ -89,16 +95,18 @@
     <option value="">-- Select your name --</option>
   </select>
 
-  <div class="card" id="card" style="display:none;">
-    <div>Hours</div>
-    <div class="hours-display" id="hoursDisplay">0</div>
-    <div class="buttons">
-      <button onclick="changeHours(-1)">−</button>
-      <button onclick="changeHours(1)">+</button>
-    </div>
-    <button class="save-btn" id="saveBtn" onclick="saveHours()">Save</button>
-    <div class="status" id="status"></div>
+ <div class="card" id="card" style="display:none;">
+  <div>Currently saved</div>
+  <div class="saved-display" id="savedDisplay">0</div>
+
+  <div style="margin-top:20px;">New value</div>
+  <div class="hours-display" id="hoursDisplay">0</div>
+  <div class="buttons">
+    <button onclick="changeHours(-1)">−</button>
+    <button onclick="changeHours(1)">+</button>
   </div>
+  <button class="save-btn" id="saveBtn" onclick="saveHours()">Save</button>
+  <div class="status" id="status"></div>
 </div>
 
 <script>
@@ -137,6 +145,7 @@ document.getElementById('nameSelect').addEventListener('change', (e) => {
   const person = people[idx];
   currentHours = Number(person.hours) || 0;
   currentRow = person.row;
+  document.getElementById('savedDisplay').textContent = currentHours;
   document.getElementById('hoursDisplay').textContent = currentHours;
   document.getElementById('status').textContent = '';
   card.style.display = 'block';
@@ -157,6 +166,7 @@ async function saveHours() {
       method: 'POST',
       body: JSON.stringify({ row: currentRow, hours: currentHours })
     });
+    document.getElementById('savedDisplay').textContent = currentHours;
     status.textContent = "Saved!";
   } catch (err) {
     status.textContent = "Error saving. Try again.";

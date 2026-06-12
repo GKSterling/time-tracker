@@ -19,8 +19,17 @@
     margin-bottom: 16px;
   }
   .container {
-    max-width: 480px;
+    max-width: 700px;
     margin: 0 auto;
+  }
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .layout > div {
+    flex: 1;
+    min-width: 280px;
   }
   select {
     width: 100%;
@@ -38,17 +47,17 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     text-align: center;
   }
+  .saved-display {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #555;
+    margin: 8px 0;
+  }
   .hours-display {
     font-size: 3rem;
     font-weight: bold;
     margin: 12px 0;
   }
- .saved-display {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #555;
-  margin: 8px 0;
-}
   .buttons {
     display: flex;
     justify-content: center;
@@ -85,28 +94,57 @@
     color: #666;
     min-height: 20px;
   }
+  .list-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .list-card h2 {
+    font-size: 1.1rem;
+    margin-top: 0;
+  }
+  .list-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+  }
+  .list-row:last-child {
+    border-bottom: none;
+  }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Team Hours Tracker</h1>
 
-  <select id="nameSelect">
-    <option value="">-- Select your name --</option>
-  </select>
+  <div class="layout">
+    <div>
+      <select id="nameSelect">
+        <option value="">-- Select your name --</option>
+      </select>
 
- <div class="card" id="card" style="display:none;">
-  <div>Currently saved</div>
-  <div class="saved-display" id="savedDisplay">0</div>
+      <div class="card" id="card" style="display:none;">
+        <div>Currently saved</div>
+        <div class="saved-display" id="savedDisplay">0</div>
 
-  <div style="margin-top:20px;">New value</div>
-  <div class="hours-display" id="hoursDisplay">0</div>
-  <div class="buttons">
-    <button onclick="changeHours(-1)">−</button>
-    <button onclick="changeHours(1)">+</button>
+        <div style="margin-top:20px;">New value</div>
+        <div class="hours-display" id="hoursDisplay">0</div>
+        <div class="buttons">
+          <button onclick="changeHours(-1)">−</button>
+          <button onclick="changeHours(1)">+</button>
+        </div>
+        <button class="save-btn" id="saveBtn" onclick="saveHours()">Save</button>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <div class="list-card">
+      <h2>Everyone's Hours</h2>
+      <div id="hoursList"></div>
+    </div>
   </div>
-  <button class="save-btn" id="saveBtn" onclick="saveHours()">Save</button>
-  <div class="status" id="status"></div>
 </div>
 
 <script>
@@ -130,9 +168,21 @@ async function loadData() {
       opt.textContent = p.name;
       select.appendChild(opt);
     });
+    renderList();
   } catch (err) {
     status.textContent = "Could not load data. Check your connection.";
   }
+}
+
+function renderList() {
+  const listEl = document.getElementById('hoursList');
+  listEl.innerHTML = '';
+  people.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `<span>${p.name}</span><span>${p.hours}</span>`;
+    listEl.appendChild(row);
+  });
 }
 
 document.getElementById('nameSelect').addEventListener('change', (e) => {
@@ -167,6 +217,8 @@ async function saveHours() {
       body: JSON.stringify({ row: currentRow, hours: currentHours })
     });
     document.getElementById('savedDisplay').textContent = currentHours;
+    people[document.getElementById('nameSelect').value].hours = currentHours;
+    renderList();
     status.textContent = "Saved!";
   } catch (err) {
     status.textContent = "Error saving. Try again.";

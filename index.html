@@ -183,18 +183,18 @@
     margin-top: 2px;
   }
   .delete-btn {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(231, 76, 60, 0.4);
-  color: white;
-  font-size: 0.8rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-}
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(231, 76, 60, 0.4);
+    color: white;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
 
   /* Loading spinner */
   .loading-wrap {
@@ -224,10 +224,7 @@
 </head>
 <body>
 <div class="container">
-  <div style="text-align:center; margin-bottom: 10px;">
-  <img src="logo.png" alt="Logo" style="max-width: 150px; height: auto;">
-</div>
-<h1>GKSterling Time Tracker</h1>
+  <h1>GKSterling Time Tracker</h1>
 
   <div class="loading-wrap" id="loadingWrap">
     <div class="spinner"></div>
@@ -279,7 +276,6 @@
 </div>
 
 <script>
-// PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyk1tE3quJV_kU__gYxxI0BstXFSIbPrMVN_qzNH43OEZVwwrpbc8Zv3ERdeaNcoc1NSA/exec";
 
 let people = [];
@@ -287,7 +283,6 @@ let addedHours = 0;
 let currentRow = null;
 
 async function loadData() {
-  const status = document.getElementById('status');
   try {
     const res = await fetch(SCRIPT_URL);
     const data = await res.json();
@@ -295,7 +290,6 @@ async function loadData() {
     people.sort((a, b) => b.hours - a.hours);
 
     const select = document.getElementById('nameSelect');
-    const previousValue = select.value;
     select.innerHTML = '<option value="">-- Select your name --</option>';
     people.forEach((p, i) => {
       const opt = document.createElement('option');
@@ -309,8 +303,6 @@ async function loadData() {
 
     document.getElementById('loadingWrap').style.display = 'none';
     document.getElementById('mainLayout').style.display = 'flex';
-
-    return previousValue;
   } catch (err) {
     document.getElementById('loadingWrap').innerHTML =
       '<div class="loading-text">Could not load data. Check your connection and refresh.</div>';

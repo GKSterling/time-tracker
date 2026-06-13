@@ -137,31 +137,13 @@
   .list-row:last-child {
     border-bottom: none;
   }
-  .total-card {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-    margin-top: 16px;
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    font-size: 1.1rem;
-  }
   .log-entry {
     padding: 8px 0;
     border-bottom: 1px solid #eee;
     font-size: 0.9rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
   }
   .log-entry:last-child {
     border-bottom: none;
-  }
-  .log-content {
-    flex: 1;
   }
   .log-name {
     font-weight: bold;
@@ -182,56 +164,13 @@
     font-size: 0.75rem;
     margin-top: 2px;
   }
-  .delete-btn {
-    flex-shrink: 0;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: #e74c3c;
-    color: white;
-    font-size: 1rem;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  /* Loading spinner */
-  .loading-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 0;
-  }
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #ddd;
-    border-top: 4px solid #4a7cf6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  .loading-text {
-    margin-top: 12px;
-    color: #666;
-    font-size: 0.9rem;
-  }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>GKSterling Time Tracker</h1>
 
-  <div class="loading-wrap" id="loadingWrap">
-    <div class="spinner"></div>
-    <div class="loading-text">Loading...</div>
-  </div>
-
-  <div class="layout" id="mainLayout" style="display:none;">
+  <div class="layout">
 
     <div class="recent-col">
       <div class="list-card">
@@ -249,8 +188,8 @@
         <div>Current Hours</div>
         <div class="saved-display" id="savedDisplay">0</div>
 
-        <div style="margin-top:20px;">Added Hours</div>
-        <div class="hours-display" id="hoursDisplay">0.0</div>
+        <div style="margin-top:20px;">Updated Hours</div>
+        <div class="hours-display" id="hoursDisplay">0</div>
         <div class="buttons">
           <button onclick="changeHours(-0.5)">−</button>
           <button onclick="changeHours(0.5)">+</button>
@@ -266,10 +205,6 @@
         <h2>Team Hours</h2>
         <div id="hoursList"></div>
       </div>
-      <div class="total-card">
-        <span>Total Hours</span>
-        <span id="totalHours">0</span>
-      </div>
     </div>
 
   </div>
@@ -277,10 +212,10 @@
 
 <script>
 // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyk1tE3quJV_kU__gYxxI0BstXFSIbPrMVN_qzNH43OEZVwwrpbc8Zv3ERdeaNcoc1NSA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYrrxypWeXczw0MdDsIiypLdWejjmxS9Me7Mvl9cYPngXDLmOcSZdku66XHGrEOxNbCg/exec";
 
 let people = [];
-let addedHours = 0;
+let currentHours = 0;
 let currentRow = null;
 
 async function loadData() {
@@ -292,7 +227,6 @@ async function loadData() {
     people.sort((a, b) => b.hours - a.hours);
 
     const select = document.getElementById('nameSelect');
-    const previousValue = select.value;
     select.innerHTML = '<option value="">-- Select your name --</option>';
     people.forEach((p, i) => {
       const opt = document.createElement('option');
@@ -301,20 +235,14 @@ async function loadData() {
       select.appendChild(opt);
     });
 
-    renderList(data.total);
+    renderList();
     renderLog(data.log || []);
-
-    document.getElementById('loadingWrap').style.display = 'none';
-    document.getElementById('mainLayout').style.display = 'flex';
-
-    return previousValue;
   } catch (err) {
-    document.getElementById('loadingWrap').innerHTML =
-      '<div class="loading-text">Could not load data. Check your connection and refresh.</div>';
+    status.textContent = "Could not load data. Check your connection.";
   }
 }
 
-function renderList(total) {
+function renderList() {
   const listEl = document.getElementById('hoursList');
   listEl.innerHTML = '';
   people.forEach(p => {
@@ -323,14 +251,13 @@ function renderList(total) {
     row.innerHTML = `<span>${p.name}</span><span>${Number(p.hours).toFixed(1)}</span>`;
     listEl.appendChild(row);
   });
-  document.getElementById('totalHours').textContent = Number(total).toFixed(1);
 }
 
 function renderLog(log) {
   const logEl = document.getElementById('recentList');
   logEl.innerHTML = '';
   if (log.length === 0) {
-    logEl.innerHTML = '<div class="log-entry"><div class="log-content">No recent changes yet.</div></div>';
+    logEl.innerHTML = '<div class="log-entry">No recent changes yet.</div>';
     return;
   }
   log.forEach(entry => {
@@ -342,28 +269,12 @@ function renderLog(log) {
     const date = new Date(entry.timestamp);
     const timeStr = date.toLocaleString();
     div.innerHTML = `
-      <div class="log-content">
-        <div><span class="log-name">${entry.name}</span> <span class="${changeClass}">${changeStr}</span></div>
-        <div class="log-reason">${entry.reason ? entry.reason : ''}</div>
-        <div class="log-time">${timeStr}</div>
-      </div>
-      <button class="delete-btn" title="Delete this entry">−</button>
+      <div><span class="log-name">${entry.name}</span> <span class="${changeClass}">${changeStr}</span></div>
+      <div class="log-reason">${entry.reason ? entry.reason : ''}</div>
+      <div class="log-time">${timeStr}</div>
     `;
-    div.querySelector('.delete-btn').addEventListener('click', () => deleteLogEntry(entry.logRow));
     logEl.appendChild(div);
   });
-}
-
-async function deleteLogEntry(logRow) {
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'delete', logRow: logRow })
-    });
-    await loadData();
-  } catch (err) {
-    alert("Could not delete entry. Try again.");
-  }
 }
 
 document.getElementById('nameSelect').addEventListener('change', (e) => {
@@ -374,19 +285,18 @@ document.getElementById('nameSelect').addEventListener('change', (e) => {
     return;
   }
   const person = people[idx];
+  currentHours = Number(person.hours) || 0;
   currentRow = person.row;
-  addedHours = 0;
-  document.getElementById('savedDisplay').textContent = Number(person.hours).toFixed(1);
-  document.getElementById('hoursDisplay').textContent = addedHours.toFixed(1);
+  document.getElementById('savedDisplay').textContent = currentHours.toFixed(1);
+  document.getElementById('hoursDisplay').textContent = currentHours.toFixed(1);
   document.getElementById('reasonText').value = '';
   document.getElementById('status').textContent = '';
   card.style.display = 'block';
 });
 
 function changeHours(delta) {
-  addedHours = Math.round((addedHours + delta) * 10) / 10;
-  const display = (addedHours > 0 ? '+' : '') + addedHours.toFixed(1);
-  document.getElementById('hoursDisplay').textContent = display;
+  currentHours = Math.max(0, currentHours + delta);
+  document.getElementById('hoursDisplay').textContent = currentHours.toFixed(1);
 }
 
 async function saveHours() {
@@ -394,7 +304,8 @@ async function saveHours() {
   const status = document.getElementById('status');
   const idx = document.getElementById('nameSelect').value;
   const person = people[idx];
-  const newTotal = Number(person.hours) + addedHours;
+  const savedBefore = Number(person.hours);
+  const changeAmount = currentHours - savedBefore;
   const reason = document.getElementById('reasonText').value.trim();
 
   btn.disabled = true;
@@ -404,21 +315,21 @@ async function saveHours() {
       method: 'POST',
       body: JSON.stringify({
         row: currentRow,
-        hours: newTotal,
+        hours: currentHours,
         name: person.name,
-        changeText: addedHours.toFixed(1),
+        changeText: changeAmount.toFixed(1),
         reason: reason
       })
     });
     status.textContent = "Submitted!";
     await loadData();
 
+    // re-select the same person and refresh displays after re-sort
     const newIdx = people.findIndex(p => p.row === currentRow);
     const select = document.getElementById('nameSelect');
     select.value = newIdx;
-    addedHours = 0;
-    document.getElementById('savedDisplay').textContent = newTotal.toFixed(1);
-    document.getElementById('hoursDisplay').textContent = "0.0";
+    document.getElementById('savedDisplay').textContent = currentHours.toFixed(1);
+    document.getElementById('hoursDisplay').textContent = currentHours.toFixed(1);
     document.getElementById('reasonText').value = '';
   } catch (err) {
     status.textContent = "Error submitting. Try again.";

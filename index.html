@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hours Tracker</title>
+<title>GKSterling Time Tracker</title>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -19,7 +19,7 @@
     margin-bottom: 16px;
   }
   .container {
-    max-width: 700px;
+    max-width: 1000px;
     margin: 0 auto;
   }
   .layout {
@@ -31,6 +31,17 @@
     flex: 1;
     min-width: 280px;
   }
+  .tracker-col { order: 2; }
+  .team-hours-col { order: 3; }
+  .recent-col { order: 1; }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .tracker-col { order: 1; }
+    .team-hours-col { order: 2; }
+    .recent-col { order: 3; }
+  }
+
   select {
     width: 100%;
     padding: 12px;
@@ -39,6 +50,17 @@
     border: 1px solid #ccc;
     margin-bottom: 16px;
     background: white;
+  }
+  textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-top: 12px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
   }
   .card {
     background: white;
@@ -99,6 +121,8 @@
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    height: 360px;
+    overflow-y: auto;
   }
   .list-card h2 {
     font-size: 1.1rem;
@@ -113,37 +137,76 @@
   .list-row:last-child {
     border-bottom: none;
   }
+  .log-entry {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+  }
+  .log-entry:last-child {
+    border-bottom: none;
+  }
+  .log-name {
+    font-weight: bold;
+  }
+  .log-change {
+    color: #2ecc71;
+    font-weight: bold;
+  }
+  .log-change.negative {
+    color: #e74c3c;
+  }
+  .log-reason {
+    color: #666;
+    margin-top: 2px;
+  }
+  .log-time {
+    color: #999;
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Team Hours Tracker</h1>
+  <h1>GKSterling Time Tracker</h1>
 
   <div class="layout">
-    <div>
+
+    <div class="recent-col">
+      <div class="list-card">
+        <h2>Recent Changes</h2>
+        <div id="recentList"></div>
+      </div>
+    </div>
+
+    <div class="tracker-col">
       <select id="nameSelect">
         <option value="">-- Select your name --</option>
       </select>
 
       <div class="card" id="card" style="display:none;">
-        <div>Currently saved</div>
+        <div>Current Hours</div>
         <div class="saved-display" id="savedDisplay">0</div>
 
-        <div style="margin-top:20px;">New value</div>
+        <div style="margin-top:20px;">Updated Hours</div>
         <div class="hours-display" id="hoursDisplay">0</div>
         <div class="buttons">
-          <button onclick="changeHours(-1)">−</button>
-          <button onclick="changeHours(1)">+</button>
+          <button onclick="changeHours(-0.5)">−</button>
+          <button onclick="changeHours(0.5)">+</button>
         </div>
-        <button class="save-btn" id="saveBtn" onclick="saveHours()">Save</button>
+        <textarea id="reasonText" placeholder="What did you do?"></textarea>
+        <button class="save-btn" id="saveBtn" onclick="saveHours()">Submit</button>
         <div class="status" id="status"></div>
       </div>
     </div>
 
-    <div class="list-card">
-      <h2>Everyone's Hours</h2>
-      <div id="hoursList"></div>
+    <div class="team-hours-col">
+      <div class="list-card">
+        <h2>Team Hours</h2>
+        <div id="hoursList"></div>
+      </div>
     </div>
+
   </div>
 </div>
 
@@ -159,7 +222,10 @@ async function loadData() {
   const status = document.getElementById('status');
   try {
     const res = await fetch(SCRIPT_URL);
-    people = await res.json();
+    const data = await res.json();
+    people = data.people;
+    people.sort((a, b) => b.hours - a.hours);
+
     const select = document.getElementById('nameSelect');
     select.innerHTML = '<option value="">-- Select your name --</option>';
     people.forEach((p, i) => {
@@ -168,7 +234,9 @@ async function loadData() {
       opt.textContent = p.name;
       select.appendChild(opt);
     });
+
     renderList();
+    renderLog(data.log || []);
   } catch (err) {
     status.textContent = "Could not load data. Check your connection.";
   }
@@ -180,8 +248,32 @@ function renderList() {
   people.forEach(p => {
     const row = document.createElement('div');
     row.className = 'list-row';
-    row.innerHTML = `<span>${p.name}</span><span>${p.hours}</span>`;
+    row.innerHTML = `<span>${p.name}</span><span>${Number(p.hours).toFixed(1)}</span>`;
     listEl.appendChild(row);
+  });
+}
+
+function renderLog(log) {
+  const logEl = document.getElementById('recentList');
+  logEl.innerHTML = '';
+  if (log.length === 0) {
+    logEl.innerHTML = '<div class="log-entry">No recent changes yet.</div>';
+    return;
+  }
+  log.forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    const changeNum = Number(entry.change);
+    const changeClass = changeNum < 0 ? 'log-change negative' : 'log-change';
+    const changeStr = (changeNum > 0 ? '+' : '') + changeNum.toFixed(1);
+    const date = new Date(entry.timestamp);
+    const timeStr = date.toLocaleString();
+    div.innerHTML = `
+      <div><span class="log-name">${entry.name}</span> <span class="${changeClass}">${changeStr}</span></div>
+      <div class="log-reason">${entry.reason ? entry.reason : ''}</div>
+      <div class="log-time">${timeStr}</div>
+    `;
+    logEl.appendChild(div);
   });
 }
 
@@ -195,33 +287,52 @@ document.getElementById('nameSelect').addEventListener('change', (e) => {
   const person = people[idx];
   currentHours = Number(person.hours) || 0;
   currentRow = person.row;
-  document.getElementById('savedDisplay').textContent = currentHours;
-  document.getElementById('hoursDisplay').textContent = currentHours;
+  document.getElementById('savedDisplay').textContent = currentHours.toFixed(1);
+  document.getElementById('hoursDisplay').textContent = currentHours.toFixed(1);
+  document.getElementById('reasonText').value = '';
   document.getElementById('status').textContent = '';
   card.style.display = 'block';
 });
 
 function changeHours(delta) {
   currentHours = Math.max(0, currentHours + delta);
-  document.getElementById('hoursDisplay').textContent = currentHours;
+  document.getElementById('hoursDisplay').textContent = currentHours.toFixed(1);
 }
 
 async function saveHours() {
   const btn = document.getElementById('saveBtn');
   const status = document.getElementById('status');
+  const idx = document.getElementById('nameSelect').value;
+  const person = people[idx];
+  const savedBefore = Number(person.hours);
+  const changeAmount = currentHours - savedBefore;
+  const reason = document.getElementById('reasonText').value.trim();
+
   btn.disabled = true;
-  status.textContent = "Saving...";
+  status.textContent = "Submitting...";
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ row: currentRow, hours: currentHours })
+      body: JSON.stringify({
+        row: currentRow,
+        hours: currentHours,
+        name: person.name,
+        changeText: changeAmount.toFixed(1),
+        reason: reason
+      })
     });
-    document.getElementById('savedDisplay').textContent = currentHours;
-    people[document.getElementById('nameSelect').value].hours = currentHours;
-    renderList();
-    status.textContent = "Saved!";
+    status.textContent = "Submitted!";
+    await loadData();
+
+    // re-select the same person and refresh displays after re-sort
+    const newIdx = people.findIndex(p => p.row === currentRow);
+    const select = document.getElementById('nameSelect');
+    select.value = newIdx;
+    document.getElementById('savedDisplay').textContent = currentHours.toFixed(1);
+    document.getElementById('hoursDisplay').textContent = currentHours.toFixed(1);
+    document.getElementById('reasonText').value = '';
   } catch (err) {
-    status.textContent = "Error saving. Try again.";
+    status.textContent = "Error submitting. Try again.";
   }
   btn.disabled = false;
   setTimeout(() => { status.textContent = ''; }, 2000);
